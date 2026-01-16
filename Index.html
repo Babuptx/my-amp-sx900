@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hi-Res Digital System V1.3</title>
+<style>
+    :root {
+        --wood-dark: #3e2723;
+        --wood-light: #5d4037;
+        --faceplate-bg: linear-gradient(to bottom, #f0f0f0 0%, #dcdcdc 100%);
+        --meter-off: #080808;
+        --meter-on: #2b2015;
+        --jbl-blue: #3b4c6b;
+        
+        --led-off: #300; 
+        --led-on: #f00;
+        --neon-green: #39ff14;
+
+        /* Playlist & Labels */
+        --playlist-bg: #111;
+        --playlist-text: #ccc;
+        --playlist-active: #ffaa00;
+        --ui-font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        
+        /* Buttons */
+        --btn-silver: linear-gradient(to bottom, #f6f6f6 0%, #e0e0e0 40%, #c0c0c0 50%, #d8d8d8 100%);
+        --btn-silver-active: linear-gradient(to bottom, #bbb 0%, #ddd 100%);
+        --btn-load: linear-gradient(to bottom, #e0e0e0 0%, #bdbdbd 100%);
+        
+        /* Magic Eye Colors */
+        --eye-off: #020;
+        --eye-on: #3f3;
+        --eye-glow: #7f7;
+        --eye-shadow-bg: #000;
+    }
+
+    body {
+        background-color: #121212;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        padding-top: 20px;
+        font-family: var(--ui-font);
+        color: #ddd;
+        user-select: none;
+        overflow: hidden;
+    }
+
+    .system-container {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 20px;
+        transform: scale(0.90);
+    }
+
+    /* --- JBL SPEAKERS --- */
+    .speaker {
+        width: 260px; height: 580px;
+        background: repeating-linear-gradient(90deg, var(--wood-dark), var(--wood-light) 2px, var(--wood-dark) 4px);
+        border: 12px solid #2d1b15;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+        position: relative; display: flex; flex-direction: column; padding: 15px;
+        cursor: pointer; overflow: hidden;
+    }
+    .baffle {
+        width: 100%; height: 100%;
+        background-color: var(--jbl-blue);
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        display: flex; flex-direction: column; align-items: center; 
+        padding-top: 15px; gap: 10px; position: relative;
+    }
+
+    /* Grille Overlay */
+    .grille-overlay {
+        position: absolute; top: 15px; left: 15px; right: 15px; bottom: 15px;
+        background-color: #d64900;
+        background-image: 
+            linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.3)),
+            linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.3));
+        background-position: 0 0, 10px 10px; background-size: 20px 20px;
+        box-shadow: inset 0 0 50px rgba(0,0,0,0.6);
+        z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;
+        display: flex; justify-content: center; align-items: center;
+    }
+    .grille-overlay::after {
+        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background-image: radial-gradient(circle, rgba(255,255,255,0.1) 20%, transparent 70%);
+        background-size: 20px 20px; background-position: 5px 5px; opacity: 0.5;
+    }
+    .grille-badge {
+        background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 2px;
+        font-family: sans-serif; font-weight: 900; color: #d66; font-size: 10px;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.5); position: absolute; top: 20px;
+        opacity: 0; transition: opacity 0.3s;
+    }
+    .speaker:first-child .grille-badge { left: 20px; }
+    .speaker:last-child .grille-badge { right: 20px; }
+    .grille-overlay.active { opacity: 1; pointer-events: auto; }
+    .grille-overlay.active .grille-badge { opacity: 1; }
+    
+    /* SPEAKER TOP SECTION (Layout Engine) */
+    .spk-top-section { 
+        display: flex; flex-direction: column; 
+        padding: 20px; height: 200px; width: 100%; box-sizing: border-box; 
+        gap: 15px; position: relative;
+    }
+
+    /* LEFT SPEAKER: Tweeters Right Aligned */
+    .speaker:first-child .spk-top-section {
+        align-items: flex-end; /* Push to Right */
+    }
+
+    /* RIGHT SPEAKER: Tweeters Left Aligned (Mirrored) */
+    .speaker:last-child .spk-top-section { 
+        flex-direction: row-reverse; /* Reverses order: Controls Right, Tweeters Left */
+        justify-content: flex-end; /* In row-reverse, flex-end aligns to the LEFT side */
+        gap: 20px; 
+        align-items: flex-start;
+    }
+    
+    .tweeter-l52 { 
+        width: 70px; height: 70px; background: #222; border-radius: 50%; 
+        box-shadow: 1px 1px 5px rgba(255,255,255,0.1), inset 0 0 10px #000; 
+        display: flex; justify-content: center; align-items: center; border: 4px solid #333; 
+    }
+    
+    /* Tweeter Dome with White Center Cone */
+    .tweeter-dome { 
+        width: 30px; height: 30px; 
+        background: radial-gradient(circle at 50% 50%, #ffffff 0%, #ffffff 20%, #aaaaaa 40%, #333 100%);
+        border-radius: 50%; position: relative; z-index: 2; box-shadow: 0 2px 4px #000; 
+    }
+    
+    .tweeter-guard { position: absolute; width: 36px; height: 2px; background: rgba(0,0,0,0.8); transform: rotate(0deg); z-index: 3; }
+    .tweeter-guard.v { transform: rotate(90deg); }
+
+    .tweeter-l52.small { width: 50px; height: 50px; border-width: 3px; }
+    
+    /* Small Tweeter Dome with White Center Cone */
+    .tweeter-l52.small .tweeter-dome { 
+        width: 20px; height: 20px; 
+        background: radial-gradient(circle at 50% 50%, #ffffff 0%, #ffffff 20%, #bbbbbb 50%, #333 100%);
+    }
+    
+    .tweeter-l52.small .tweeter-guard { width: 26px; }
+
+    /* Tweeter Columns */
+    .tweeter-column { display: flex; flex-direction: column; gap: 15px; align-items: center; }
+
+    /* Speaker Controls (Right Speaker) */
+    .spk-controls-container {
+        display: flex; flex-direction: column; gap: 15px; align-items: center;
+    }
+    .spk-knob-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .spk-label { font-size: 7px; font-weight: bold; color: #ccc; font-family: sans-serif; letter-spacing: 0.5px; text-transform: uppercase; text-shadow: 0 1px 2px #000;}
+    .spk-knob { 
+        width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle, #ddd, #999); 
+        border: 1px solid #555; position: relative; box-shadow: 1px 2px 4px rgba(0,0,0,0.5); cursor: ns-resize; 
+    }
+    .spk-knob::after { content:''; position:absolute; top:2px; left:50%; width:2px; height:8px; background:#333; transform:translateX(-50%); border-radius:1px; }
+
+
+    .woofer-housing { 
+        width: 170px; height: 170px; border-radius: 50%; background: #222; display: flex; justify-content: center; align-items: center; 
+        box-shadow: 2px 5px 10px rgba(0,0,0,0.5); position: relative; margin-top: auto; margin-bottom: 30px; 
+    }
+    .woofer-housing::before { content: '. . . .'; position: absolute; width: 100%; height: 100%; color: #888; font-size: 18px; line-height: 160px; text-align: center; letter-spacing: 38px; transform: rotate(45deg); pointer-events: none; }
+    .woofer-cone { 
+        width: 150px; height: 150px; border-radius: 50%; 
+        background: repeating-radial-gradient(circle at center, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 1px, transparent 1px, transparent 3px), conic-gradient(from 180deg, #fff, #ddd, #eee, #ddd, #fff);
+        box-shadow: inset 0 0 30px rgba(0,0,0,0.15); display: flex; justify-content: center; align-items: center; border: 10px solid #1a1a1a; position: relative; 
+    }
+    .dust-cap { 
+        width: 60px; height: 60px; border-radius: 50%; 
+        background: radial-gradient(circle at 30% 30%, #fff 0%, #e0e0e0 20%, #bfbfbf 50%, #999 100%);
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.4); z-index: 5; 
+    }
+    .bass-port { 
+        width: 55px; height: 55px; background: #000; border-radius: 50%; position: absolute; top: 220px; left: 50%; transform: translateX(-50%);
+        box-shadow: inset 3px 3px 10px #000; border: 2px solid #444; 
+    }
+    
+    .spk-logo { 
+        position: absolute; top: 10px; 
+        background: rgba(230,230,230,0.95); padding: 4px 6px; border-radius: 2px; z-index: 10; 
+        box-shadow: 1px 1px 2px rgba(0,0,0,0.3); display: flex; flex-direction: column; align-items: center; 
+    }
+    .speaker:first-child .spk-logo { left: 10px; right: auto; }
+    .speaker:last-child .spk-logo { left: auto; right: 10px; }
+    .logo-main { font-weight: 900; color: #d66; font-family: sans-serif; font-size: 10px; line-height: 10px; }
+    .logo-sub { font-weight: 700; color: #333; font-family: sans-serif; font-size: 5px; margin-top: 1px; }
+
+    /* --- RECEIVER --- */
+    .receiver { width: 1000px; height: 520px; background: repeating-linear-gradient(90deg, var(--wood-dark), var(--wood-light) 2px, var(--wood-dark) 4px); border-radius: 4px; padding: 25px 35px; box-shadow: 0 50px 100px rgba(0,0,0,0.9); position: relative; z-index: 10; }
+    .faceplate { width: 100%; height: 100%; background: var(--faceplate-bg); border: 1px solid #999; display: flex; flex-direction: column; box-shadow: inset 0 0 20px rgba(0,0,0,0.2); position: relative; }
+
+    .display-window { flex: 1.3; background-color: var(--meter-off); margin: 25px 25px 0 110px; border: 2px solid #666; border-bottom: 2px solid #888; position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; gap: 30px; box-shadow: inset 0 0 80px #000; overflow: hidden; transition: background-color 0.5s; }
+    .receiver.powered-on .display-window { background: radial-gradient(circle, #3d2e1e 0%, #1a1510 100%); }
+
+    .vu-group { display: flex; gap: 20px; width: 45%; height: 80%; align-items: center; border-right: 1px solid #333; padding-right: 20px; }
+    .vu-meter { flex: 1; height: 100%; background: #000; border: 1px solid #444; position: relative; overflow: hidden; border-radius: 4px; box-shadow: inset 0 0 20px #000; }
+    .vu-backlight { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 50% 120%, #ffaa55 0%, transparent 70%); opacity: 0; transition: opacity 1s; }
+    .receiver.powered-on .vu-backlight { opacity: 0.6; animation: bulbFlicker 0.15s infinite alternate; }
+    @keyframes bulbFlicker { 0% {opacity:0.6;} 100% {opacity:0.65;} }
+    .vu-scale-container { width: 100%; height: 100%; position: absolute; opacity: 0.4; }
+    .receiver.powered-on .vu-scale-container { opacity: 1; }
+    .vu-arc { width: 80%; height: 80%; border-top: 2px solid #ddd; border-radius: 50% 50% 0 0; position: absolute; bottom: -20%; left: 10%; }
+    .vu-num { position: absolute; font-size: 8px; font-weight: bold; color: #ccc; font-family: sans-serif; text-shadow: 0 0 2px #000;}
+    .vu-needle { width: 2px; height: 85%; background: #cc2222; position: absolute; bottom: -10px; left: 50%; transform-origin: bottom center; transform: rotate(-45deg); transition: transform 0.1s; z-index: 10; box-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
+    .vu-label-text { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #555; font-size: 9px; font-weight: bold; }
+    .receiver.powered-on .vu-label-text { color: #eebb99; text-shadow: 0 0 5px orange; }
+
+    .vfd-container { display: flex; flex-direction: column; gap: 8px; width: 30%; padding: 10px 20px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid #333; }
+    .led-bar { display: flex; gap: 2px; flex-grow: 1; padding: 2px; background: #000; border: 1px solid #333; }
+    .led { flex: 1; height: 6px; background-color: #222; opacity: 0.2; }
+    .led.red-zone { background-color: #400; }
+    .led.white-zone.lit { background-color: #e0f7fa; opacity: 1; box-shadow: 0 0 4px #e0f7fa; }
+    .led.red-zone.lit { background-color: #f00; opacity: 1; box-shadow: 0 0 8px #f00; }
+
+    .info-area { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; width: 25%; height: 100%; gap: 10px; border-left: 1px solid #333; padding-left: 15px; }
+    .mech-window { display: flex; gap: 1px; background: #000; border: 1px solid #333; padding: 2px; }
+    .digit { width: 14px; height: 20px; background: linear-gradient(180deg, #222 0%, #ddd 50%, #222 100%); color: #000; font-family: monospace; font-weight: bold; font-size: 16px; line-height: 20px; text-align: center; }
+    .digital-readout { font-family: 'Courier New', monospace; font-size: 11px; color: #444; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .receiver.powered-on .digital-readout { color: #e0f7fa; text-shadow: 0 0 5px #e0f7fa; }
+
+    .mid-strip { width: 100%; height: 30px; background: #dcdcdc; border-top: 1px solid #aaa; border-bottom: 1px solid #999; margin: 0; padding: 0 25px; gap: 15px; display:flex; align-items:center; box-sizing:border-box;}
+    .bottom-strip { flex: 2.5; padding: 20px 50px; display: flex; align-items: center; justify-content: space-between; position: relative; }
+
+    /* --- ART FRAME --- */
+    .art-frame {
+        width: 270px; height: 210px;
+        background: transparent;
+        position: relative; display: flex; justify-content: center; align-items: center;
+    }
+
+    .turntable-assembly { width: 100%; height: 100%; position: absolute; display: flex; justify-content: center; align-items: center; }
+    .turntable-platter { 
+        width: 210px; height: 210px; 
+        position: relative; display: flex; justify-content: center; align-items: center; 
+        margin-right: 45px;
+    }
+
+    /* Vertical Pitch Slider */
+    .pitch-control {
+        width: 20px; height: 140px; background: #d0d0d0;
+        border: 1px solid #888; border-radius: 2px;
+        position: absolute; 
+        right: -20px; 
+        top: 35px;
+        box-shadow: inset 1px 1px 3px rgba(0,0,0,0.3);
+        display: flex; justify-content: center;
+        transition: opacity 0.3s;
+    }
+    .pitch-control.disabled { opacity: 0.3; pointer-events: none; }
+
+    .pitch-track {
+        width: 4px; height: 120px; background: #111; margin-top: 10px;
+        border-radius: 2px; position: relative;
+    }
+    .pitch-fader {
+        width: 16px; height: 24px; background: linear-gradient(to bottom, #ddd, #fff, #999);
+        border: 1px solid #666; border-radius: 2px;
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.5); cursor: ns-resize; z-index: 10;
+        transition: all 0.2s;
+    }
+    .pitch-fader::after { content: ''; width: 100%; height: 1px; background: #333; position: absolute; top: 50%; }
+    
+    .fader-value {
+        position: absolute; left: -30px; top: 50%; transform: translateY(-50%);
+        font-size: 10px; font-family: monospace; color: #555; font-weight: bold;
+        text-align: right; width: 25px; pointer-events: none;
+    }
+
+    /* Fader Glow on Lock */
+    .receiver.powered-on .pitch-fader.locked {
+        background: linear-gradient(to bottom, #fff, #eef, #ccc);
+        box-shadow: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green), inset 0 0 2px #fff;
+        border-color: var(--neon-green);
+    }
+    .receiver.powered-on .pitch-fader.locked::after { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
+    
+    .pitch-scale {
+        position: absolute; right: 25px; top: 35px; height: 140px; width: 15px; 
+        font-size: 12px; color: #555; font-family: sans-serif; font-weight: bold;
+        display: flex; flex-direction: column; justify-content: space-between; text-align: right;
+        padding: 5px 0;
+    }
+
+    /* Strobe */
+    .strobe-led-tower { position: absolute; bottom: 0px; left: 0px; width: 16px; height: 22px; background: linear-gradient(to right, #777 0%, #ccc 40%, #ddd 60%, #888 100%); border: 1px solid #555; border-bottom: 1px solid #333; border-radius: 2px 2px 4px 4px; z-index: 20; box-shadow: inset 0 1px 2px rgba(255,255,255,0.5), 2px 3px 5px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
+    .strobe-bulb { position: relative; width: 10px; height: 14px; background: #300; border-radius: 2px; box-shadow: inset 0 0 3px #000; border: 1px solid #222; }
+    .receiver.powered-on .strobe-bulb { background: #f00; box-shadow: 0 0 10px #f00, 0 0 15px #f00; border-color: #900; }
+    .strobe-shine { position: absolute; bottom: 2px; left: 5px; width: 50px; height: 50px; background: radial-gradient(circle at center, rgba(255, 30, 30, 0.9) 0%, rgba(255,0,0,0) 65%); mix-blend-mode: overlay; pointer-events: none; z-index: 15; opacity: 0; transition: opacity 0.2s; }
+    .receiver.powered-on .strobe-shine { opacity: 1; }
+    .strobe-rim { width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(to bottom, #d0d0d0, #e8e8e8); border: 8px dotted #a8a8a8; box-sizing: border-box; box-shadow: 0 5px 15px rgba(0,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.5); position: absolute; top:0; left:0; display: flex; justify-content: center; align-items: center; z-index: 1; }
+    .spinning-ccw { animation: spin-ccw 4s linear infinite; }
+    @keyframes spin-ccw { 100% { transform: rotate(-360deg); } }
+    .vinyl-record { width: 95%; height: 95%; border-radius: 50%; background: radial-gradient(circle, #111 20%, #222 21%, #111 22%, #222 23%, #111 24%, #222 25%, #111 60%, #000 100%); position: relative; z-index: 2; display: flex; justify-content: center; align-items: center; }
+    .vinyl-record::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%), conic-gradient(from 45deg, transparent 0%, rgba(255,255,255,0.05) 10%, transparent 20%); pointer-events: none; }
+    .spinning-cw { animation: spin-wobble 1.8s linear infinite; }
+    @keyframes spin-wobble { 0% { transform: rotate(0deg) translate(0,0); } 100% { transform: rotate(360deg) translate(0,0); } }
+    .vinyl-label { width: 75px; height: 75px; border-radius: 50%; background-color: #999; background-size: cover; background-position: center; border: 2px solid #111; position: relative; transition: background 0.5s; display: flex; justify-content: center; align-items: center; }
+    .vinyl-hole { width: 8px; height: 8px; background: #e0e0e0; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid #000; z-index: 10; }
+
+    /* RADIO */
+    .radio-tuner-icon { display: none; width: 190px; height: 190px; background: #222; border-radius: 50%; border: 8px solid #444; box-shadow: inset 0 0 20px #000, 0 5px 15px rgba(0,0,0,0.5); justify-content: center; align-items: center; position: relative; overflow: hidden; cursor: grab; }
+    .radio-tuner-icon:active { cursor: grabbing; }
+    .magic-eye-center { width: 70px; height: 70px; background: var(--eye-off); border-radius: 50%; position: absolute; z-index: 5; box-shadow: inset 0 0 10px #000; transition: all 1s ease-in-out; overflow: hidden; border: 2px solid #111; pointer-events: none; }
+    .receiver.powered-on .magic-eye-center { background: var(--eye-on); box-shadow: 0 0 20px var(--eye-on), 0 0 50px var(--eye-glow), inset 0 0 20px var(--eye-glow); animation: eyePulse 4s infinite alternate; }
+    @keyframes eyePulse { 0% { opacity: 0.8; } 100% { opacity: 1.0; } }
+    .tuning-wedge { position: absolute; bottom: 0; left: 50%; width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 35px solid var(--eye-shadow-bg); transform-origin: bottom center; transform: translateX(-50%); opacity: 0.9; }
+    .dial-ring-bg { position: absolute; width: 100%; height: 100%; border-radius: 50%; background: repeating-conic-gradient(#333 0deg 1deg, transparent 1deg 5deg); opacity: 0.3; z-index: 1; pointer-events: none;}
+    
+    /* Dial Numbers Logic */
+    .dial-nums { position: absolute; width: 100%; height: 100%; font-family: 'Courier New', monospace; font-size: 12px; color: #888; font-weight: bold; z-index: 2; pointer-events: none; }
+    
+    .dn-num { 
+        position: absolute; top: 50%; left: 50%; 
+        width: 20px; height: 20px; margin-left: -10px; margin-top: -10px;
+        text-align: center; color: #aaa; font-size: 14px;
+    }
+    
+    /* Spread numbers along arc: -50deg to +50deg */
+    .dn-ch1 { transform: rotate(-50deg) translateY(-65px); }
+    .dn-ch2 { transform: rotate(-30deg) translateY(-65px); }
+    .dn-ch3 { transform: rotate(-10deg) translateY(-65px); }
+    .dn-ch4 { transform: rotate(10deg) translateY(-65px); }
+    .dn-ch5 { transform: rotate(30deg) translateY(-65px); }
+    .dn-ch6 { transform: rotate(50deg) translateY(-65px); }
+
+    .dial-needle-icon { position: absolute; top: 50%; left: 50%; width: 4px; height: 95px; background: #f00; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 3; transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1); box-shadow: 0 0 5px #f00; opacity: 0.9; border-radius: 2px; pointer-events: none; }
+
+    /* CONTROLS LAYOUT */
+    .controls-right-container { display: flex; align-items: flex-end; gap: 40px; position: relative; }
+    .tone-group { display: flex; gap: 40px; align-items: flex-end; margin-right: 20px; transform: translateY(-20px); }
+    
+    .vol-power-stack { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 140px; }
+
+    .control-group { display: flex; flex-direction: column; align-items: center; position: relative; }
+    .label { margin-top: 8px; font-size: 10px; font-weight: 900; color: #333; letter-spacing: 1px; font-family: sans-serif; text-transform: uppercase; }
+
+    .knob-container { position: relative; width: 120px; height: 120px; display: flex; justify-content: center; align-items: center; }
+    .tick { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; pointer-events: none; }
+    .knob-text { position: absolute; font-size: 9px; font-weight: bold; color: #444; font-family: sans-serif; pointer-events: none; }
+    .knob-large { border-radius: 50%; background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.1) 70%, transparent 80%), conic-gradient(from 45deg, #ddd, #fff, #bbb, #eee, #ccc, #fff, #ddd); border: 1px solid #999; box-shadow: 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.8); position: relative; cursor: grab; z-index: 5; }
+    .knob-large::after { content: ''; position: absolute; top: 10%; left: 50%; width: 2px; height: 40%; background: #111; transform: translateX(-50%); border-radius: 1px; }
+    .knob-large:active { cursor: grabbing; }
+    .size-tone { width: 70px; height: 70px; }
+    .size-vol { width: 90px; height: 90px; }
+    .knob-container.size-vol { width: 90px; height: 90px; border-radius: 50%; flex-shrink: 0; }
+    .knob-val { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); color: #333; font-size: 10px; font-family: monospace; font-weight: bold; background: rgba(255,255,255,0.8); padding: 1px 4px; border-radius: 2px; opacity: 0; transition: opacity 0.2s; pointer-events: none; border: 1px solid #aaa; }
+    .knob-container:hover .knob-val { opacity: 1; }
+
+    /* RPM CYCLER (Left of Bass) */
+    .rpm-control-panel {
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+        position: absolute; bottom: 5px; 
+        left: -140px;
+        width: 80px;
+    }
+    .rpm-leds-container { display: flex; gap: 15px; margin-bottom: 5px; }
+    .rpm-led-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    
+    .rpm-label { font-size: 9px; font-weight: bold; color: #444; font-family: sans-serif; }
+
+    /* Rectangular LEDs */
+    .rpm-led { 
+        width: 12px; height: 6px; border-radius: 1px; background: #400; border: 1px solid #200; 
+    }
+    .receiver.powered-on .rpm-led.lit { background: #f00; box-shadow: 0 0 6px #f00; border-color: #f55; }
+    
+    .rpm-button {
+        width: 50px; height: 18px; background: linear-gradient(to bottom, #eee, #ccc);
+        border: 1px solid #888; border-radius: 2px; font-size: 9px; font-weight: bold; color: #333;
+        display: flex; justify-content: center; align-items: center; cursor: pointer;
+        box-shadow: 0 2px 3px rgba(0,0,0,0.3);
+    }
+    .rpm-button:active { transform: translateY(1px); box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); background: #bbb; }
+
+    /* NEW POWER BUTTON STYLES (Moved to Left) */
+    .power-group { 
+        position: absolute; top: 35px; left: 30px; 
+        display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 50;
+    }
+    
+    .power-btn-large {
+        width: 60px; height: 60px; /* Bigger */
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #444, #111);
+        border: 2px solid #333;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.1);
+        display: flex; justify-content: center; align-items: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+    }
+    .power-btn-large:active { transform: scale(0.95); box-shadow: inset 0 2px 10px rgba(0,0,0,0.8); }
+
+    /* Power Symbol inside Button */
+    .power-symbol {
+        width: 24px; height: 24px;
+        border: 3px solid #333; /* Dark when off */
+        border-radius: 50%; border-top-color: transparent;
+        position: relative; transition: all 0.5s;
+    }
+    .power-symbol::after {
+        content: ''; position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
+        width: 3px; height: 12px; background: #333; transition: all 0.5s;
+    }
+
+    /* ON STATE GLOW */
+    .receiver.powered-on .power-btn-large {
+        background: radial-gradient(circle at 30% 30%, #222, #000);
+        box-shadow: 0 0 15px var(--neon-green), inset 0 0 20px rgba(57, 255, 20, 0.2); 
+        border-color: #555;
+    }
+    .receiver.powered-on .power-symbol { border-color: var(--neon-green); filter: drop-shadow(0 0 5px var(--neon-green)); }
+    .receiver.powered-on .power-symbol::after { background: var(--neon-green); }
+
+    .control-deck { width: 1000px; height: 180px; background: #151515; border: 2px solid #333; border-top: none; padding: 15px 40px; display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; margin-top: 0; border-radius: 0 0 5px 5px; }
+    .deck-left { display: flex; flex-direction: column; gap: 10px; width: 60%; }
+    .deck-right { display: flex; flex-direction: column; align-items: flex-end; gap: 20px; width: 35%; height: 100%; justify-content: center; }
+    .playlist-screen { width: 100%; height: 120px; background-color: var(--playlist-bg); border: 1px solid #444; border-radius: 2px; padding: 8px; font-family: var(--ui-font); font-size: 12px; overflow-y: auto; color: var(--playlist-text); box-shadow: inset 0 0 10px #000; }
+    .playlist-screen::-webkit-scrollbar { width: 6px; }
+    .playlist-screen::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    .playlist-item { padding: 4px 8px; cursor: pointer; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
+    .playlist-item:hover { background: #222; color: #fff; }
+    .playlist-item.active { color: var(--playlist-active); background: #252525; font-weight: bold; border-left: 3px solid var(--playlist-active); }
+    .input-row { display: flex; gap: 10px; }
+    
+    .deck-btn { width: auto; height: 40px; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; padding: 0 15px; border-radius: 3px; border: 1px solid #999; gap: 8px; background: var(--btn-load); color: #222; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6); text-shadow: 0 1px 0 rgba(255,255,255,0.4); text-transform: uppercase; }
+    .deck-btn:active { background: var(--btn-silver-active); transform: translateY(2px); box-shadow: inset 0 2px 5px rgba(0,0,0,0.3); }
+    .icon-eject { font-size: 16px; font-weight: normal; }
+    
+    .folder-info { font-family: var(--ui-font); font-size: 12px; color: var(--playlist-text); border: 1px solid #444; padding: 0 12px; background: var(--playlist-bg); height: 40px; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; text-transform: uppercase; border-radius: 3px; box-shadow: inset 0 0 10px #000; flex-grow: 1; }
+    .deck-select { background: #333; color: #fff; border: 1px solid #555; padding: 5px 15px; cursor: pointer; font-size: 10px; font-family: monospace; max-width: 200px; text-transform: uppercase; height: 40px; }
+    .transport-group { display: flex; gap: 12px; }
+    .transport-btn { width: 44px; height: 36px; border-radius: 3px; border: 1px solid #999; background: var(--btn-silver); color: #222; cursor: pointer; font-size: 16px; box-shadow: 0 2px 3px rgba(0,0,0,0.3); display: inline-flex; justify-content: center; align-items: center; transition: all 0.05s ease-out; position: relative; }
+    .transport-btn:hover { background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 100%); }
+    .transport-btn:active { transform: translateY(1px); box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); background: var(--btn-silver-active); }
+    .transport-btn.playing { color: #00c700; text-shadow: 0 0 5px #00ff00; background: #e0ffe0; border-color: #00c700; }
+
+</style>
+</head>
+<body>
+
+<div class="system-container">
+    <div class="speaker">
+        <div class="grille-overlay"><div class="grille-badge">JBL</div></div>
+        <div class="baffle">
+            <div class="spk-logo"><span class="logo-main">JBL</span><span class="logo-sub">MODEL 4312</span></div>
+            <div class="spk-top-section">
+                <div class="tweeter-column">
+                    <div class="tweeter-l52"><div class="tweeter-dome"></div><div class="tweeter-guard"></div><div class="tweeter-guard v"></div></div>
+                    <div class="tweeter-l52 small"><div class="tweeter-dome"></div><div class="tweeter-guard"></div><div class="tweeter-guard v"></div></div>
+                </div>
+            </div>
+            <div class="bass-port"></div>
+            <div class="woofer-housing"><div class="woofer-cone" id="wooferL"><div class="dust-cap"></div></div></div>
+        </div>
+    </div>
+
+    <div class="receiver powered-off" id="mainReceiver">
+        <div class="faceplate">
+            <div class="power-group">
+                <div class="power-btn-large" id="powerBtn">
+                    <div class="power-symbol"></div>
+                </div>
+                <div style="font-size:8px; font-weight:bold; color:#444;">POWER</div>
+            </div>
+
+            <div class="display-window">
+                <div class="vu-group">
+                    <div class="vu-meter"><div class="vu-backlight"></div><div class="vu-scale-container"><div class="vu-arc"></div><div class="vu-num" style="bottom:22%; left:12%;">-20</div><div class="vu-num" style="top:40%; left:15%;">-10</div><div class="vu-num" style="top:15%; right:30%;">0</div><div class="vu-num" style="top:38%; right:15%; color:#d33;">+3</div></div><div class="vu-needle" id="needleL"></div><div class="vu-label-text">LEFT</div></div>
+                    <div class="vu-meter"><div class="vu-backlight"></div><div class="vu-scale-container"><div class="vu-arc"></div><div class="vu-num" style="bottom:22%; left:12%;">-20</div><div class="vu-num" style="top:40%; left:15%;">-10</div><div class="vu-num" style="top:15%; right:30%;">0</div><div class="vu-num" style="top:38%; right:15%; color:#d33;">+3</div></div><div class="vu-needle" id="needleR"></div><div class="vu-label-text">RIGHT</div></div>
+                </div>
+                <div class="vfd-container"><div class="channel-row"><div class="ch-label">L</div><div class="led-bar" id="ledRowL"></div></div><div class="channel-row"><div class="ch-label">R</div><div class="led-bar" id="ledRowR"></div></div></div>
+                <div class="info-area">
+                    <div class="mech-window" id="mechCounter"><div class="digit">0</div><div class="digit">0</div><div class="digit">0</div><div class="digit">0</div><div class="digit">0</div></div>
+                    <div style="text-align:right; width: 100%;"><div class="digital-readout" id="trackNameDisplay" style="color:#dca; font-weight:bold;">OFF AIR</div><div class="digital-readout" id="timeDisplay" style="margin-top:5px; font-size:10px;">00:00</div></div>
+                </div>
+            </div>
+
+            <div class="mid-strip"><div style="width:14px; height:14px; background:#000; border:3px solid #888; border-radius:50%;"></div><span style="font-size:10px; color:#444; font-weight:bold; margin-left:5px;">PHONES</span></div>
+
+            <div class="bottom-strip">
+                <div class="art-frame">
+                    <div class="turntable-assembly" id="turntableAssembly">
+                        <div class="turntable-platter">
+                            <div class="strobe-led-tower"><div class="strobe-bulb"></div></div>
+                            <div class="strobe-shine"></div>
+                            <div class="strobe-rim" id="strobeRim">
+                                <div class="vinyl-record" id="vinylRecord">
+                                    <div class="vinyl-label" id="artDisplay"></div>
+                                    <div class="vinyl-hole"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pitch-control" id="pitchControlContainer">
+                            <div class="pitch-scale">
+                                <div>-</div><div>+</div>
+                            </div>
+                            <div class="pitch-track" id="pitchTrack">
+                                <div class="pitch-fader" id="pitchFader">
+                                    <div id="pitchValDisplay" class="fader-value">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="radio-tuner-icon" id="radioPanel">
+                        <div class="dial-ring-bg"></div>
+                        <div class="dial-nums">
+                            <span class="dn-num dn-ch1">1</span>
+                            <span class="dn-num dn-ch2">2</span>
+                            <span class="dn-num dn-ch3">3</span>
+                            <span class="dn-num dn-ch4">4</span>
+                            <span class="dn-num dn-ch5">5</span>
+                            <span class="dn-num dn-ch6">6</span>
+                        </div>
+                        <div class="magic-eye-center">
+                            <div class="tuning-wedge"></div>
+                        </div>
+                        <div class="dial-needle-icon" id="dialNeedle"></div>
+                    </div>
+                </div>
+
+                <div class="controls-right-container">
+                    <div class="tone-group">
+                        <div class="control-group">
+                            <div class="rpm-control-panel">
+                                <div class="rpm-leds-container">
+                                    <div class="rpm-led-stack"><div class="rpm-label">33</div><div class="rpm-led lit" id="led33"></div></div>
+                                    <div class="rpm-led-stack"><div class="rpm-label">45</div><div class="rpm-led" id="led45"></div></div>
+                                    <div class="rpm-led-stack"><div class="rpm-label">78</div><div class="rpm-led" id="led78"></div></div>
+                                </div>
+                                <div class="rpm-button" id="rpmBtn">SPEED</div>
+                            </div>
+
+                            <div class="knob-container size-tone">
+                                <div id="scaleBass" style="width:100%; height:100%; position:absolute;"></div>
+                                <div class="knob-val" id="valBass">0dB</div>
+                                <div class="knob-large size-tone" id="knobBass" style="transform: rotate(0deg);"></div>
+                            </div>
+                            <div class="label">BASS</div>
+                        </div>
+                        <div class="control-group">
+                            <div class="knob-container size-tone">
+                                <div id="scaleTreble" style="width:100%; height:100%; position:absolute;"></div>
+                                <div class="knob-val" id="valTreble">0dB</div>
+                                <div class="knob-large size-tone" id="knobTreble" style="transform: rotate(0deg);"></div>
+                            </div>
+                            <div class="label">TREBLE</div>
+                        </div>
+                    </div>
+
+                    <div class="vol-power-stack">
+                        <div class="control-group">
+                            <div class="knob-container size-vol">
+                                <div id="scaleVol" style="width:100%; height:100%; position:absolute;"></div>
+                                <div class="knob-text" style="bottom:0px; left:-12px;">Min</div>
+                                <div class="knob-text" style="top:-5px; left:50%; transform:translateX(-50%);">-20dB</div>
+                                <div class="knob-text" style="bottom:0px; right:-12px;">Max</div>
+                                <div class="knob-val" id="valVol">50%</div>
+                                <div class="knob-large size-vol" id="knobVol" style="transform: rotate(-30deg);"></div>
+                            </div>
+                            <div class="label">VOLUME</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="speaker">
+        <div class="grille-overlay"><div class="grille-badge">JBL</div></div>
+        <div class="baffle">
+            <div class="spk-logo"><span class="logo-main">JBL</span><span class="logo-sub">MODEL 4312</span></div>
+            <div class="spk-top-section">
+                <div class="spk-controls-container">
+                     <div class="spk-knob-group"><div class="spk-knob" id="spkHf" style="transform:rotate(0deg);"></div><div class="spk-label">HF LEVEL</div></div>
+                     <div class="spk-knob-group"><div class="spk-knob" id="spkLf" style="transform:rotate(0deg);"></div><div class="spk-label">LF LEVEL</div></div>
+                 </div>
+                <div class="tweeter-column">
+                    <div class="tweeter-l52"><div class="tweeter-dome"></div><div class="tweeter-guard"></div><div class="tweeter-guard v"></div></div>
+                    <div class="tweeter-l52 small"><div class="tweeter-dome"></div><div class="tweeter-guard"></div><div class="tweeter-guard v"></div></div>
+                </div>
+            </div>
+            <div class="bass-port"></div>
+            <div class="woofer-housing"><div class="woofer-cone" id="wooferR"><div class="dust-cap"></div></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="control-deck">
+    <div class="deck-left">
+        <div class="input-row">
+            <label class="deck-btn" title="Load Music Folder"><span class="icon-eject">⏏</span> <span>LOAD</span><input type="file" id="folderInput" webkitdirectory directory multiple accept="audio/*,image/*" style="display:none"></label>
+            <div class="folder-info" id="folderLabel">NO MEDIA</div>
+            <select class="deck-select" id="radioSelect">
+                <option value="">-- RADIO TUNER --</option>
+                <option value="https://funasia.streamguys1.com/live-1">1. FunAsiA Radio</option>
+                <option value="http://strm112.1.fm/bombaybeats_mobile_mp3">2. Bombay Beats</option>
+                <option value="https://radio.garden/api/ara/content/listen/Fcq2lp3a/channel.mp3">3. Mohammed Rafi Radio (Classics)</option>
+                <option value="http://stream.kissfm.de/kissfm/mp3-128/">4. KISS FM (Hits)</option>
+                <option value="http://media-ice.musicradio.com/CapitalMP3">5. Capital UK</option>
+                <option value="http://media-ice.musicradio.com/ClassicFMMP3">6. Classic FM</option>
+            </select>
+        </div>
+        <div class="playlist-screen" id="playlistDisplay"><div style="padding:5px; color:#666; font-style:italic;">No files loaded...</div></div>
+    </div>
+    <div class="deck-right">
+        <div class="transport-group">
+            <button class="transport-btn" id="btnPrev" title="Prev Song">⏮</button>
+            <button class="transport-btn" id="btnRW" title="Seek -10s">⏪</button>
+            <button class="transport-btn" id="btnPlay" title="Play/Pause">▶</button>
+            <button class="transport-btn" id="btnStop" title="Stop">◼</button>
+            <button class="transport-btn" id="btnFF" title="Seek +10s">⏩</button>
+            <button class="transport-btn" id="btnNext" title="Next Song">⏭</button>
+        </div>
+    </div>
+</div>
+
+<audio id="audioElement" crossorigin="anonymous"></audio>
+
+<script>
+    let isPoweredOn = false, isPlaying = false, mode = 'FILE'; 
+    let currentFileName = "NO FILE";
+    let playlist = []; let albumArts = []; 
+    let currentTrackIndex = -1;
+    let artInterval = null;
+    let currentRadioChannel = 0;
+    
+    // --- RPM CYCLER ---
+    let rpmOptions = [33, 45, 78];
+    let rpmIndex = 0;
+    let currentBaseRate = 1.0; 
+    
+    const rpmBtn = document.getElementById('rpmBtn');
+    const led33 = document.getElementById('led33');
+    const led45 = document.getElementById('led45');
+    const led78 = document.getElementById('led78');
+
+    function updateRPM() {
+        // Cycle visuals
+        led33.classList.remove('lit'); led45.classList.remove('lit'); led78.classList.remove('lit');
+        if (rpmIndex === 0) { led33.classList.add('lit'); currentBaseRate = 1.0; }
+        else if (rpmIndex === 1) { led45.classList.add('lit'); currentBaseRate = 1.35; }
+        else if (rpmIndex === 2) { led78.classList.add('lit'); currentBaseRate = 2.36; }
+        // Re-apply pitch with new base
+        updatePitch(currentPitchVal);
+    }
+
+    rpmBtn.addEventListener('click', () => {
+        rpmIndex = (rpmIndex + 1) % 3;
+        updateRPM();
+    });
+
+    const artStyles = ["linear-gradient(45deg, #111, #444)", "radial-gradient(circle, #cc2b5e, #753a88)", "conic-gradient(from 0deg, #ffaa00, #333, #ffaa00)", "linear-gradient(135deg, #00c6ff, #0072ff)"];
+    const vinylColors = [
+        { main: '#111', sec: '#222', outer: '#000' }, { main: '#900', sec: '#a00', outer: '#600' }, 
+        { main: '#009', sec: '#00a', outer: '#006' }, { main: '#c60', sec: '#d70', outer: '#940' }, { main: '#ca0', sec: '#db0', outer: '#980' }  
+    ];
+
+    let audioCtx, source, gainNode, bassNode, trebleNode, spkLfNode, spkHfNode, splitter, analyserL, analyserR, isCtxInit = false;
+
+    // DOM References
+    const receiver = document.getElementById('mainReceiver'); const powerBtn = document.getElementById('powerBtn');
+    const audio = document.getElementById('audioElement'); const trackNameDisplay = document.getElementById('trackNameDisplay');
+    const timeDisplay = document.getElementById('timeDisplay'); const playlistDisplay = document.getElementById('playlistDisplay');
+    const artDisplay = document.getElementById('artDisplay'); const vinylRecord = document.getElementById('vinylRecord');
+    const strobeRim = document.getElementById('strobeRim'); const mechCounter = document.getElementById('mechCounter');
+    
+    const turntableAssembly = document.getElementById('turntableAssembly'); const radioPanel = document.getElementById('radioPanel');
+    const dialNeedle = document.getElementById('dialNeedle'); const radioSelect = document.getElementById('radioSelect');
+    const folderLabel = document.getElementById('folderLabel');
+    
+    const pitchFader = document.getElementById('pitchFader');
+    const pitchControlContainer = document.getElementById('pitchControlContainer'); const pitchTrack = document.getElementById('pitchTrack');
+    
+    const knobVol = document.getElementById('knobVol'); const knobBass = document.getElementById('knobBass'); const knobTreble = document.getElementById('knobTreble');
+    const spkLf = document.getElementById('spkLf'); const spkHf = document.getElementById('spkHf');
+    const needleL = document.getElementById('needleL'); const needleR = document.getElementById('needleR');
+    const wooferL = document.getElementById('wooferL'); const wooferR = document.getElementById('wooferR');
+
+    // Ticks & LEDs Setup
+    function createTicks(containerId, isLarge) {
+        const container = document.getElementById(containerId); const radius = isLarge ? 58 : 48; 
+        const startDeg = -135; const endDeg = 135; const tickCount = 19; const stepSize = (endDeg - startDeg) / (tickCount - 1);
+        for(let i=0; i<tickCount; i++) {
+            const tick = document.createElement('div'); tick.classList.add('tick');
+            if(i % 2 === 0) { tick.style.height = '8px'; tick.style.width = '2px'; tick.style.background = '#111'; } 
+            else { tick.style.height = '5px'; tick.style.width = '1px'; tick.style.background = '#777'; }
+            const deg = startDeg + (i * stepSize);
+            tick.style.transform = `translate(-50%, -50%) rotate(${deg}deg) translateY(-${radius}px)`;
+            container.appendChild(tick);
+        }
+    }
+    createTicks('scaleBass', false); createTicks('scaleTreble', false); createTicks('scaleVol', true);
+
+    const LED_COUNT = 20; 
+    function createLEDs(container) {
+        for(let i=0; i<LED_COUNT; i++) {
+            const led = document.createElement('div'); led.classList.add('led');
+            if(i < 10) led.classList.add('white-zone'); else led.classList.add('red-zone');
+            container.appendChild(led);
+        }
+    }
+    createLEDs(document.getElementById('ledRowL')); createLEDs(document.getElementById('ledRowR'));
+
+    function playClick() {
+        const C = window.AudioContext || window.webkitAudioContext; const c = new C();
+        const o = c.createOscillator(); const g = c.createGain();
+        o.type = 'square'; o.frequency.setValueAtTime(100, c.currentTime); o.frequency.exponentialRampToValueAtTime(40, c.currentTime+0.1);
+        g.gain.setValueAtTime(0.9, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime+0.15);
+        o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+0.2);
+    }
+
+    powerBtn.addEventListener('click', () => {
+        playClick(); isPoweredOn = !isPoweredOn;
+        if(isPoweredOn) { receiver.classList.add('powered-on'); trackNameDisplay.textContent = "READY"; updateRPM(); } 
+        else { receiver.classList.remove('powered-on'); trackNameDisplay.textContent = "OFF AIR"; stopAudio(); }
+    });
+
+    function changeVinylColor() {
+        const rnd = Math.floor(Math.random() * vinylColors.length); const c = vinylColors[rnd];
+        vinylRecord.style.background = `radial-gradient(circle, ${c.main} 20%, ${c.sec} 21%, ${c.main} 22%, ${c.sec} 23%, ${c.main} 24%, ${c.sec} 25%, ${c.main} 60%, ${c.outer} 100%)`;
+    }
+
+    function toggleView(viewMode) {
+        if(viewMode === 'RADIO') { 
+            turntableAssembly.style.display = 'none'; radioPanel.style.display = 'flex';
+            pitchControlContainer.classList.add('disabled');
+        } 
+        else { 
+            turntableAssembly.style.display = 'flex'; radioPanel.style.display = 'none';
+            pitchControlContainer.classList.remove('disabled');
+        }
+    }
+
+    document.querySelectorAll('.speaker').forEach(spk => {
+        spk.addEventListener('click', (e) => {
+            if (e.target === spk || e.target.classList.contains('grille-overlay') || e.target.classList.contains('grille-badge')) {
+                spk.querySelector('.grille-overlay').classList.toggle('active');
+            }
+        });
+    });
+
+    document.getElementById('folderInput').addEventListener('change', (e) => {
+        document.getElementById('radioSelect').value = ""; toggleView('FILE'); 
+        const allFiles = Array.from(e.target.files);
+        if(allFiles.length > 0) {
+            const folderName = allFiles[0].webkitRelativePath.split('/')[0];
+            folderLabel.textContent = folderName; folderLabel.style.color = "#ccc"; 
+            changeVinylColor();
+            const audioFiles = allFiles.filter(f => f.type.startsWith('audio/'));
+            albumArts = allFiles.filter(f => f.type.startsWith('image/')).map(f => URL.createObjectURL(f));
+            if(audioFiles.length > 0) {
+                mode = 'FILE'; playlist = audioFiles.sort((a,b) => a.name.localeCompare(b.name));
+                currentTrackIndex = 0; renderPlaylist(); loadTrack(0);
+            }
+        }
+    });
+
+    function getMetadata(filename) {
+        const parts = filename.replace(/\.[^/.]+$/, "").split(' - ');
+        if(parts.length > 1) return { artist: parts[0], title: parts[1] };
+        return { artist: "Unknown Artist", title: filename };
+    }
+
+    async function renderPlaylist() {
+        playlistDisplay.innerHTML = '';
+        for(let i=0; i<playlist.length; i++) {
+            const file = playlist[i]; const meta = getMetadata(file.name);
+            const item = document.createElement('div'); item.classList.add('playlist-item');
+            if(i === currentTrackIndex) item.classList.add('active');
+            item.innerHTML = `<span><b>${i+1}.</b> ${meta.title} <small style="color:#888">by ${meta.artist}</small></span><span id="dur-${i}" style="font-size:10px; color:#666">(--:--)</span>`;
+            item.onclick = () => { loadTrack(i); playAudio(); };
+            playlistDisplay.appendChild(item);
+            const tempAudio = new Audio(URL.createObjectURL(file));
+            tempAudio.addEventListener('loadedmetadata', () => {
+                const d = tempAudio.duration; const m = Math.floor(d/60); const s = Math.floor(d%60);
+                const el = document.getElementById(`dur-${i}`); if(el) el.textContent = `(${m}:${s.toString().padStart(2,'0')})`;
+            });
+        }
+    }
+
+    function loadTrack(index) {
+        if(index < 0 || index >= playlist.length) return;
+        currentTrackIndex = index; const file = playlist[index];
+        audio.src = URL.createObjectURL(file);
+        Array.from(playlistDisplay.children).forEach((child, i) => { if(i===index) child.classList.add('active'); else child.classList.remove('active'); });
+        const meta = getMetadata(file.name); currentFileName = meta.title;
+        if(isPoweredOn) trackNameDisplay.textContent = currentFileName.toUpperCase();
+        changeArt();
+        
+        // Reset Pitch Visuals
+        updatePitch(0);
+        pitchFader.style.top = "50%";
+    }
+
+    audio.addEventListener('ended', () => { if(mode === 'FILE' && currentTrackIndex < playlist.length - 1) { loadTrack(currentTrackIndex + 1); playAudio(); }});
+
+    // --- PITCH CONTROL LOGIC ---
+    let isDraggingPitch = false;
+    let currentPitchVal = 0; // -1 to 1
+
+    function updatePitch(val) {
+        if (mode === 'RADIO') return; // Strict check
+
+        currentPitchVal = val;
+        // Clamp
+        if (val < -1) val = -1; if (val > 1) val = 1;
+
+        let playbackRate = 1.0;
+        // Quartz Lock
+        if (Math.abs(val) < 0.05) {
+            val = 0; pitchFader.classList.add('locked');
+            playbackRate = currentBaseRate;
+        } else {
+            pitchFader.classList.remove('locked');
+            // Vertical slider: Top (-) Slow, Bottom (+) Fast
+            playbackRate = currentBaseRate * (1.0 + (val * 0.08)); 
+        }
+
+        // MODIFIED: Update Display Number (Assuming 8% pitch range)
+        const pitchValDisplay = document.getElementById('pitchValDisplay');
+        if(pitchValDisplay) {
+            let displayNum = (val * 8).toFixed(1);
+            if(val === 0) displayNum = "0";
+            else if (val > 0) displayNum = "+" + displayNum;
+            pitchValDisplay.textContent = displayNum;
+        }
+
+        audio.playbackRate = playbackRate;
+
+        if(playbackRate > 0) {
+            const vinSpeed = 1.8 / playbackRate;
+            const rimSpeed = 4.0 / playbackRate;
+            vinylRecord.style.animationDuration = `${vinSpeed}s`;
+            strobeRim.style.animationDuration = `${rimSpeed}s`;
+        }
+    }
+
+    pitchControlContainer.addEventListener('mousedown', (e) => {
+        if (mode === 'RADIO') return;
+        if(e.target === pitchFader || e.target === pitchTrack || e.target === pitchControlContainer || e.target.id === 'pitchValDisplay') {
+            isDraggingPitch = true;
+            handlePitchDrag(e.clientY);
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (isDraggingPitch && mode === 'FILE') {
+            e.preventDefault(); 
+            handlePitchDrag(e.clientY);
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDraggingPitch = false;
+    });
+
+    function handlePitchDrag(clientY) {
+        const trackRect = pitchTrack.getBoundingClientRect();
+        
+        let relativeY = clientY - trackRect.top;
+        if (relativeY < 0) relativeY = 0;
+        if (relativeY > trackRect.height) relativeY = trackRect.height;
+        
+        pitchFader.style.top = relativeY + "px";
+        
+        const halfHeight = trackRect.height / 2;
+        // Top is negative (slow), Bottom is positive (fast)
+        const normalizedVal = (relativeY - halfHeight) / halfHeight;
+        
+        updatePitch(normalizedVal);
+    }
+
+    // RADIO LOGIC (Updated to handle 6 Channels)
+    let isDraggingDial = false; let dialNeedleAngle = 0; 
+    // MODIFIED: 6 Angles to match dial numbers (-50 to +50 degrees)
+    const channelAngles = [-50, -30, -10, 10, 30, 50]; 
+    
+    radioPanel.addEventListener('mousedown', (e) => {
+        if (!isPoweredOn || mode !== 'RADIO') return;
+        isDraggingDial = true;
+        const rect = radioPanel.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
+        const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+        let currentDialAngle = dialNeedleAngle;
+        const onMouseMove = (ev) => {
+            const angle = Math.atan2(ev.clientY - centerY, ev.clientX - centerX) * 180 / Math.PI;
+            let delta = angle - startAngle; dialNeedleAngle = currentDialAngle + delta;
+            let closestChannel = 0; let minDiff = Infinity;
+            channelAngles.forEach((chAngle, index) => {
+                const diff = Math.abs(dialNeedleAngle - chAngle);
+                if (diff < minDiff) { minDiff = diff; closestChannel = index; }
+            });
+            dialNeedleAngle = channelAngles[closestChannel];
+            dialNeedle.style.transform = `translate(-50%, -100%) rotate(${dialNeedleAngle}deg)`;
+            if (currentRadioChannel !== closestChannel + 1) {
+                currentRadioChannel = closestChannel + 1;
+                radioSelect.selectedIndex = currentRadioChannel; radioSelect.dispatchEvent(new Event('change'));
+            }
+        };
+        const onMouseUp = () => { isDraggingDial = false; window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+        window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp);
+    });
+
+    document.getElementById('radioSelect').addEventListener('change', (e) => {
+        if(e.target.value) { 
+            playlist = []; currentTrackIndex = -1; const channelName = e.target.options[e.target.selectedIndex].text;
+            playlistDisplay.innerHTML = `<div style="padding:10px; color:#4a4; font-weight:bold; font-size:14px; text-align:center;">[ RADIO MODE ACTIVE ]<br><br><span style="color:#fff">${channelName}</span></div>`;
+            document.getElementById('folderInput').value = ""; folderLabel.textContent = "RADIO TUNER"; folderLabel.style.color = "#aaa";
+            toggleView('RADIO'); mode = 'RADIO'; currentFileName = channelName; audio.src = e.target.value; 
+            
+            // Reset Pitch for Radio (Force 1.0 speed visually and audibly)
+            audio.playbackRate = 1.0;
+            
+            if(isPoweredOn) trackNameDisplay.textContent = currentFileName; 
+            playAudio(); 
+            const selectedIndex = e.target.selectedIndex - 1;
+            if (selectedIndex >= 0 && selectedIndex < channelAngles.length) {
+                dialNeedleAngle = channelAngles[selectedIndex]; dialNeedle.style.transform = `translate(-50%, -100%) rotate(${dialNeedleAngle}deg)`; currentRadioChannel = selectedIndex + 1;
+            }
+        }
+    });
+
+    document.getElementById('btnPlay').addEventListener('click', () => { if(!isPoweredOn) return alert("Power ON"); if(audio.paused) playAudio(); else audio.pause(); });
+    document.getElementById('btnStop').addEventListener('click', stopAudio);
+    document.getElementById('btnPrev').addEventListener('click', () => { if(mode==='FILE') { loadTrack(currentTrackIndex - 1); playAudio(); }});
+    document.getElementById('btnNext').addEventListener('click', () => { if(mode==='FILE') { loadTrack(currentTrackIndex + 1); playAudio(); }});
+    document.getElementById('btnRW').addEventListener('click', () => { if(mode==='FILE') audio.currentTime = Math.max(0, audio.currentTime - 10); });
+    document.getElementById('btnFF').addEventListener('click', () => { if(mode==='FILE') audio.currentTime = Math.min(audio.duration, audio.currentTime + 10); });
+
+    function playAudio() {
+        if(!isCtxInit) initAudio(); if(audioCtx.state === 'suspended') audioCtx.resume();
+        audio.play().then(()=>{ document.getElementById('btnPlay').classList.add('playing'); isPlaying = true; if(mode === 'FILE') { startArtShuffle(); vinylRecord.classList.add('spinning-cw'); strobeRim.classList.add('spinning-ccw'); } }).catch(e=>{ trackNameDisplay.textContent = "SIGNAL ERROR"; });
+    }
+    function stopAudio() {
+        audio.pause(); if(mode==='FILE') audio.currentTime=0;
+        document.getElementById('btnPlay').classList.remove('playing'); isPlaying = false;
+        if(isPoweredOn) trackNameDisplay.textContent = "STOPPED";
+        stopArtShuffle(); vinylRecord.classList.remove('spinning-cw'); strobeRim.classList.remove('spinning-ccw');
+    }
+
+    function startArtShuffle() { if(artInterval) clearInterval(artInterval); changeArt(); artInterval = setInterval(changeArt, 5000); }
+    function stopArtShuffle() { if(artInterval) clearInterval(artInterval); artDisplay.style.backgroundImage = 'none'; }
+    function changeArt() {
+        if(mode === 'RADIO') return; 
+        if (albumArts.length > 0) { const rnd = Math.floor(Math.random() * albumArts.length); artDisplay.style.backgroundImage = `url(${albumArts[rnd]})`; } 
+        else { const rnd = Math.floor(Math.random() * artStyles.length); artDisplay.style.backgroundImage = artStyles[rnd]; }
+    }
+
+    let volVal = 0.5;
+    function setupKnob(element, display, minVal, maxVal, initialAngle, callback) {
+        let currentAngle = initialAngle;
+        element.addEventListener('mousedown', (e) => {
+            if(!isPoweredOn) return; let startY = e.clientY; let startAngle = currentAngle;
+            const onMove = (ev) => {
+                let delta = (startY - ev.clientY) * 2; let newAngle = startAngle + delta;
+                if(newAngle > 135) newAngle = 135; if(newAngle < -135) newAngle = -135;
+                currentAngle = newAngle; element.style.transform = `rotate(${currentAngle}deg)`;
+                let pct = (currentAngle + 135) / 270; let val = minVal + (pct * (maxVal - minVal));
+                if(display) { if(minVal === 0 && maxVal === 100) display.textContent = Math.round(val) + "%"; else display.textContent = (val > 0 ? "+" : "") + Math.round(val) + "dB"; }
+                if(callback) callback(val);
+            };
+            const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+            window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+        });
+    }
+
+    setupKnob(knobVol, document.getElementById('valVol'), 0, 100, -30, (v) => { volVal = v/100; if(gainNode) gainNode.gain.value = volVal * 2; });
+    setupKnob(knobBass, document.getElementById('valBass'), -12, 12, 0, (v) => { if(bassNode) bassNode.gain.value = v; });
+    setupKnob(knobTreble, document.getElementById('valTreble'), -12, 12, 0, (v) => { if(trebleNode) trebleNode.gain.value = v; });
+    setupKnob(spkLf, null, -10, 10, 0, (v) => { if(spkLfNode) spkLfNode.gain.value = v; });
+    setupKnob(spkHf, null, -10, 10, 0, (v) => { if(spkHfNode) spkHfNode.gain.value = v; });
+
+    function initAudio() {
+        const C = window.AudioContext || window.webkitAudioContext; audioCtx = new C();
+        source = audioCtx.createMediaElementSource(audio);
+        bassNode = audioCtx.createBiquadFilter(); bassNode.type = 'lowshelf'; bassNode.frequency.value = 200;
+        trebleNode = audioCtx.createBiquadFilter(); trebleNode.type = 'highshelf'; trebleNode.frequency.value = 3000;
+        spkLfNode = audioCtx.createBiquadFilter(); spkLfNode.type = 'peaking'; spkLfNode.frequency.value = 100; spkLfNode.Q.value = 1;
+        spkHfNode = audioCtx.createBiquadFilter(); spkHfNode.type = 'peaking'; spkHfNode.frequency.value = 10000; spkHfNode.Q.value = 1;
+        gainNode = audioCtx.createGain(); gainNode.gain.value = (volVal * 2);
+        splitter = audioCtx.createChannelSplitter(2);
+        analyserL = audioCtx.createAnalyser(); analyserL.fftSize = 256; 
+        analyserR = audioCtx.createAnalyser(); analyserR.fftSize = 256; 
+        analyserL.smoothingTimeConstant = 0.8; analyserR.smoothingTimeConstant = 0.8;
+        source.connect(bassNode); bassNode.connect(trebleNode); trebleNode.connect(spkLfNode); spkLfNode.connect(spkHfNode); spkHfNode.connect(gainNode);
+        gainNode.connect(splitter); splitter.connect(analyserL, 0); splitter.connect(analyserR, 1);
+        gainNode.connect(audioCtx.destination);
+        isCtxInit = true;
+    }
+
+    function draw() {
+        requestAnimationFrame(draw); if(!isCtxInit || !isPoweredOn) return;
+        
+        if(mode === 'FILE' && audio.duration) {
+            const cur = audio.currentTime; 
+            const m = Math.floor(cur/60); const s = Math.floor(cur%60);
+            timeDisplay.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            let count = Math.floor(cur * 10); if(count > 99999) count = 0;
+            let sCount = count.toString().padStart(5, '0');
+            for(let i=0; i<5; i++) mechCounter.children[i].textContent = sCount[i];
+        }
+
+        const dL = new Uint8Array(analyserL.frequencyBinCount); const dR = new Uint8Array(analyserR.frequencyBinCount);
+        analyserL.getByteFrequencyData(dL); analyserR.getByteFrequencyData(dR);
+        let volL = 0, volR = 0; for(let i=0; i<dL.length; i++) { volL += dL[i]; volR += dR[i]; }
+        volL = volL/dL.length; volR = volR/dR.length;
+        if(isPlaying && mode === 'RADIO' && volL < 1) { volL = Math.random()*100; volR = Math.random()*100; }
+        needleL.style.transform = `rotate(${Math.min(45, (volL * 0.8) - 45)}deg)`; needleR.style.transform = `rotate(${Math.min(45, (volR * 0.8) - 45)}deg)`;
+        const mapLED = (v) => Math.min(Math.floor((v/160)*LED_COUNT), LED_COUNT);
+        updateRow(document.getElementById('ledRowL'), mapLED(volL)); updateRow(document.getElementById('ledRowR'), mapLED(volR));
+        const scale = 1 + (Math.pow(dL[2]/255, 2) * volVal * 0.25);
+        wooferL.style.transform = wooferR.style.transform = `scale(${scale})`;
+    }
+    draw();
+    function updateRow(row, count) { for(let i=0; i<LED_COUNT; i++) { if(i < count) row.children[i].classList.add('lit'); else row.children[i].classList.remove('lit'); } }
+</script>
+</body>
+</html>
