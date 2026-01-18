@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hi-Res Digital System V1.3</title>
+<title>Hi-Res Digital System V1.4</title>
 <style>
     :root {
         --wood-dark: #3e2723;
@@ -33,6 +33,12 @@
         --eye-on: #3f3;
         --eye-glow: #7f7;
         --eye-shadow-bg: #000;
+        
+        /* Power Button Colors */
+        --power-btn-off: radial-gradient(circle at 30% 30%, #666 0%, #444 50%, #222 100%);
+        --power-btn-on: radial-gradient(circle at 30% 30%, #333 0%, #000 100%);
+        --power-icon-off: #ccc;
+        --power-icon-on: #00ffff;
     }
 
     body {
@@ -392,9 +398,10 @@
     .power-btn-large {
         width: 60px; height: 60px; /* Bigger */
         border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, #444, #111);
-        border: 2px solid #333;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.1);
+        /* OFF State: Dark Gunmetal Body */
+        background: var(--power-btn-off);
+        border: 2px solid #666;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.3);
         display: flex; justify-content: center; align-items: center;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -405,23 +412,23 @@
     /* Power Symbol inside Button */
     .power-symbol {
         width: 24px; height: 24px;
-        border: 3px solid #333; /* Dark when off */
+        border: 4px solid var(--power-icon-off); /* Thicker & Light Grey */
         border-radius: 50%; border-top-color: transparent;
         position: relative; transition: all 0.5s;
     }
     .power-symbol::after {
-        content: ''; position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
-        width: 3px; height: 12px; background: #333; transition: all 0.5s;
+        content: ''; position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+        width: 4px; height: 12px; background: var(--power-icon-off); transition: all 0.5s;
     }
 
     /* ON STATE GLOW */
     .receiver.powered-on .power-btn-large {
-        background: radial-gradient(circle at 30% 30%, #222, #000);
-        box-shadow: 0 0 15px var(--neon-green), inset 0 0 20px rgba(57, 255, 20, 0.2); 
+        background: var(--power-btn-on);
+        box-shadow: 0 0 15px var(--power-on-neon), inset 0 0 20px rgba(57, 255, 20, 0.2); 
         border-color: #555;
     }
-    .receiver.powered-on .power-symbol { border-color: var(--neon-green); filter: drop-shadow(0 0 5px var(--neon-green)); }
-    .receiver.powered-on .power-symbol::after { background: var(--neon-green); }
+    .receiver.powered-on .power-symbol { border-color: var(--power-icon-on); filter: drop-shadow(0 0 5px var(--power-icon-on)); }
+    .receiver.powered-on .power-symbol::after { background: var(--power-icon-on); }
 
     .control-deck { width: 1000px; height: 180px; background: #151515; border: 2px solid #333; border-top: none; padding: 15px 40px; display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; margin-top: 0; border-radius: 0 0 5px 5px; }
     .deck-left { display: flex; flex-direction: column; gap: 10px; width: 60%; }
@@ -445,6 +452,23 @@
     .transport-btn:hover { background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 100%); }
     .transport-btn:active { transform: translateY(1px); box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); background: var(--btn-silver-active); }
     .transport-btn.playing { color: #00c700; text-shadow: 0 0 5px #00ff00; background: #e0ffe0; border-color: #00c700; }
+    
+    /* CREDIT FOOTER */
+    .credit-footer {
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+        font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+        font-size: 14px; 
+        color: #ffffff; 
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        opacity: 0.8;
+        user-select: text;
+        cursor: text;
+        padding-bottom: 20px; /* Added padding for bottom spacing */
+    }
 
 </style>
 </head>
@@ -608,10 +632,10 @@
                 <option value="">-- RADIO TUNER --</option>
                 <option value="https://funasia.streamguys1.com/live-1">1. FunAsiA Radio</option>
                 <option value="http://strm112.1.fm/bombaybeats_mobile_mp3">2. Bombay Beats</option>
-                <option value="https://radio.garden/api/ara/content/listen/Fcq2lp3a/channel.mp3">3. Mohammed Rafi Radio (Classics)</option>
+                <option value="https://prclive1.listenon.in/Hindi">3. Radio City Hindi</option>
                 <option value="http://stream.kissfm.de/kissfm/mp3-128/">4. KISS FM (Hits)</option>
-                <option value="http://media-ice.musicradio.com/CapitalMP3">5. Capital UK</option>
-                <option value="http://media-ice.musicradio.com/ClassicFMMP3">6. Classic FM</option>
+                <option value="https://radio.garden/api/ara/content/listen/HCWLk25l/channel.mp3">5. Lata Mangeshkar Radio</option>
+                <option value="https://stream.zeno.fm/wn2k922222quv">6. Vividh Bharati (AIR)</option>
             </select>
         </div>
         <div class="playlist-screen" id="playlistDisplay"><div style="padding:5px; color:#666; font-style:italic;">No files loaded...</div></div>
@@ -626,6 +650,10 @@
             <button class="transport-btn" id="btnNext" title="Next Song">⏭</button>
         </div>
     </div>
+</div>
+
+<div class="credit-footer">
+    Dedicated to all Audiophiles. Designed & Developed by Chittaranjan Panda (babuptx [at] gmail)
 </div>
 
 <audio id="audioElement" crossorigin="anonymous"></audio>
